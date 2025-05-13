@@ -76,7 +76,7 @@ def create_args():
   
   # subcommand: tsv_to_bed
   parser_tsv_to_bed = subparsers.add_parser('tsv_to_bed',
-                                            help = 'Convert TSV file to BED format for MACS3 peak calling. For "--type nt_qual": regions with lower quality scores will generate more simulated read tags, creating peaks in those regions. For "--type nt_count": the number of simulated read tags is proportional to the fraction of C converted to T at each reference C position.')
+                                            help = 'Convert TSV file to BED format for MACS3 peak calling. For "--type nt_qual": regions with lower quality scores will generate more simulated read tags, creating peaks in those regions. For "--type nt_count": the number of simulated read tags is proportional to the fraction of C converted to T at each reference C position')
   parser_tsv_to_bed.add_argument('--tsv', 
                                   type = str, 
                                   required = True,

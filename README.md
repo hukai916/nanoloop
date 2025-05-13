@@ -15,17 +15,17 @@ The `nanoloop` library enables the identification of R-loop regions using nanopo
 
 **R-loops** are three-stranded nucleic acid structures formed when nascent RNA hybridizes with its DNA template, displacing the non-template DNA strand. They play critical roles in transcription regulation, DNA replication, and repair. Dysregulated R-loops are associated with genomic instability and disease. 
 
-In A3A-treated samples, unprotected single-stranded DNA in R-loops undergoes cytosine (C) deamination to uracil (dU). When using standard Dorado basecalling models, these dU sites are frequently **miscalled as C or T with lower basecalling quality**. `nanoloop` leverages this signature to
+In A3A-treated samples, unprotected single-stranded DNA in R-loops undergoes cytosine (C) deamination to uracil (dU). When using standard Dorado basecalling models, these dU sites are frequently **miscalled as C or T with lower basecalling quality**. `nanoloop` leverages this signature to:
 
-+ Quantify and visualize basecalling quality over specified genomic regions.
++ Quantify and visualize basecalling quality over specified genomic regions
 
-+ Quantify and visualize C-to-T conversion frequencies over specified genomic regions.
++ Quantify and visualize C-to-T conversion frequencies over specified genomic regions
 
 + Simulate MACS3-compatible BED files for peak calling
 
 + Call R-loop peaks using a rolling average approach
 
-## Core functions
+## Core Functions
 
 ### `bam_to_tsv`
 Converts a BAM file to a bgzipped TSV file. The output reports per-position statistics: base count distribution (if `--type nt_count`) or base quality distribution (if `--type nt_qual`).
@@ -84,9 +84,15 @@ options:
 You can also run subcommand-specific help, e.g.`nanoloop bam_to_tsv -h`, etc.
 
 ## Examples
-The following examples use the downsampled BAM `examples/bam/p1214_no_pcr.bam`, derived from an A3A-treated plasmid expected to contain R-loops around its middle region. "no_pcr" indicates sequencing was performed directly after A3A treatment (without PCR), preserving dU signatures.
+The following examples use a downsampled BAM `examples/bam/p1214_no_pcr.bam`, derived from an A3A-treated plasmid sample expected to contain R-loops around its middle region. "no_pcr" indicates sequencing was performed directly after A3A treatment (without PCR), preserving dU signatures.
 
-### `--type nt_qual`: analyze base qualities
+`nanoloop` supports both `--type nt_qual` and `--type nt_count` options. Their usage is demosntrated below.
+
+  + `--type nt_qual`: uses the average read quality score at each nucleotide position for peak calling. Regions exhibiting decreased quality scores are identified as potential R-loop candidates.
+  + `--type nt_count`: uses the C-to-T conversion frequency at each position for peak calling. Regions with elevated conversion rates are identified as potential R-loop candidates.
+
+### Using base quality: `--type nt_qual`
+This approach leverages the decreased basecalling quality observed at R-loop regions, an artifact caused by the presence of the unconventional deoxyuridien (dU) base.
 
 #### Step 1: generate TSV
 ```bash
@@ -145,12 +151,6 @@ p1214	6018	6035
 ```
 
 Alternatively, we can convert the TSV file into a MACS3-compatible BED file for peak calling. In this approach:
-
-  + For `--type nt_qual`: each position's average quality score is converted into simulated read tags, where lower quality scores generate more tags. This means regions with poor basecalling quality (potential R-loops) will have higher tag density.
-  + For `--type nt_count`: each position's C-to-T conversion frequency is converted into simulated read tags, where higher conversion rates generate more tags. This means regions with more C-to-T conversions (potential R-loops) will have higher tag density.
-
-Here's how to use this approach:
-
 ```bash
 # Convert TSV to BED
 nanoloop tsv_to_bed \
@@ -169,11 +169,11 @@ macs3 callpeak -f BED \
   --outdir examples/res/p1214_no_pcr_nt_qual_macs3_peaks
 ```
 
-Note that in the simulated BED file, each position becomes a read tag of length 1. The number of identical tags at each position reflects either:
+Note that in the simulated BED file, each reference position is represented by multiple single-nucleotide read tags. The number of tags at each position reflects:
 - The inverse of the average quality score (for `--type nt_qual`)
 - The C-to-T conversion frequency (for `--type nt_count`)
 
-Therefore, we use `--keep-dup all` to preserve all tags and `--nomodel` to skip fragment length estimation, as our tags are already single-base signals. The results are consistent with the rolling average approach above:
+To accurately capture these signals, we use `--keep-dup all` to retain all duplicate tags and `--nomodel` to skip fragment length estimation, since our tags are already single-nucleotide in length. The results produced are consistent with the rolling average approach described above.
 ```bash
 cat examples/res/p1214_no_pcr_nt_qual_macs3_peaks/p1214_no_pcr_nt_qual_macs3_peaks.narrowPeak
 ```
@@ -181,9 +181,8 @@ cat examples/res/p1214_no_pcr_nt_qual_macs3_peaks/p1214_no_pcr_nt_qual_macs3_pea
 p1214	4722	6364	p1214_no_pcr_nt_qual_macs3_peak_1	2414	.	1.57326	245.385	241.431	1044
 ```
 
-### `--type nt_count`: Analyze C-to-T Conversion Frequencies
-
-This approach focuses on the frequency of C-to-T conversions, which is another signature of R-loops in A3A-treated samples.
+### Using base count: `--type nt_count`:
+This approach focuses on the frequency of C-to-T conversions, another signature of R-loops in A3A-treated samples.
 
 #### Step 1: generate TSV
 ```bash
@@ -261,7 +260,7 @@ macs3 callpeak -f BED \
   --outdir examples/res/p1214_no_pcr_nt_count_macs3_peaks
 ```
 
-The MACS3 results are consistent with the rolling average approach:
+The MACS3 results are consistent with the rolling average approach as well:
 ```bash
 cat examples/res/p1214_no_pcr_nt_count_macs3_peaks/p1214_no_pcr_nt_count_macs3_peaks.narrowPeak
 ```
