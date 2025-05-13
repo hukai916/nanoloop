@@ -58,10 +58,40 @@ Note that when `--type nt_count`, the TSV input must be from `bam_to_tsv` with `
 pip install nanoloop
 ```
 
+### Managing Dependencies with Poetry
+To downgrade a package version using Poetry:
+
+```bash
+# Show current package version
+poetry show package_name
+
+# Downgrade to a specific version
+poetry add package_name@version
+
+# Example: downgrade pandas to 1.5.3
+poetry add pandas@1.5.3
+
+# Example: downgrade numpy to 1.23.5
+poetry add numpy@1.23.5
+```
+
+You can also edit the `pyproject.toml` file directly to specify version constraints:
+```toml
+[tool.poetry.dependencies]
+python = "^3.8"
+pandas = "1.5.3"
+numpy = "1.23.5"
+```
+
+After modifying `pyproject.toml`, run:
+```bash
+poetry lock --no-update  # Update lock file without updating dependencies
+poetry install          # Install dependencies according to lock file
+```
+
 ## Parameters
 ```bash
 nanoloop -h
-```
 ```
 usage: nanoloop [-h] {bam_to_tsv,tsv_to_plot,tsv_to_bed,tsv_to_peak} ...
 

@@ -14,6 +14,12 @@ def str2bool(v):
 def create_args():
   parser = argparse.ArgumentParser(description = 'nanoloop')
   subparsers = parser.add_subparsers(dest = 'command')
+  
+  # Add version command
+  from . import __version__
+  parser.add_argument('--version',
+                     action = 'version',
+                     version = __version__)
 
   # subcommand: bam_to_tsv
   parser_bam_to_tsv = subparsers.add_parser('bam_to_tsv',
