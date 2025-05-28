@@ -20,8 +20,8 @@ def run_tsv_to_plot(args):
     # Calculate ref_nt C converted to all other nucleotides ratio
     if (args.mode == "ratio"):
       y_label = 'Allele frequency'
-      df['C_to_T_ratio'] = df['T'] / (df['C'] + df['T'] + 0.01)
-      df['G_to_A_ratio'] = df['A'] / (df['G'] + df['A'] + 0.01) 
+      df['C_to_T_ratio'] = df['T'] / (df['C'] + df['T'] + df['G'] + df['A'] + df['N'] + 0.01)
+      df['G_to_A_ratio'] = df['A'] / (df['G'] + df['A'] + df['C'] + df['T'] + df['N'] + 0.01)
     elif (args.mode == "count"):
       y_label = 'Allele count'
 
@@ -32,8 +32,8 @@ def run_tsv_to_plot(args):
     plot_kwargs = dict(edgecolor = 'black', linewidth = 0.5, s = 12, alpha = 0.75)
     
     if args.mode == "ratio":
-      sns.scatterplot(data = df_C, ax = ax, x = 'start', y = 'C_to_T_ratio', label = 'T/(C + T) at ref C sites', **plot_kwargs, color = '#0072B2',)
-      sns.scatterplot(data = df_G, ax = ax, x = 'start', y = 'G_to_A_ratio', label = 'A/(A + G) at ref G sites', **plot_kwargs, color = '#D55E00')
+      sns.scatterplot(data = df_C, ax = ax, x = 'start', y = 'C_to_T_ratio', label = 'T/all at ref C sites', **plot_kwargs, color = '#0072B2',)
+      sns.scatterplot(data = df_G, ax = ax, x = 'start', y = 'G_to_A_ratio', label = 'A/all at ref G sites', **plot_kwargs, color = '#D55E00')
     elif args.mode == "count":
       sns.scatterplot(data = df_C, ax = ax, x = 'start', y = 'T', label = 'T count at ref C sites', **plot_kwargs, color = '#0072B2')
       sns.scatterplot(data = df_G, ax = ax, x = 'start', y = 'A', label = 'A count at ref G sites', **plot_kwargs, color = '#D55E00')
@@ -47,11 +47,11 @@ def run_tsv_to_plot(args):
       df_G['G_to_A_ratio_rolling_avg'] = df_G['G_to_A_ratio'].rolling(window = window_size, min_periods = 1).mean()
       sns.lineplot(data = df_C, ax = ax, x = 'start', 
                   y = 'C_to_T_ratio_rolling_avg',
-                  label = 'T/(C + T) at ref C sites (rolling avg)',
+                  label = 'T/all at ref C sites (rolling avg)',
                   color = '#0072B2', linewidth = 0.4, alpha = 0.6)
       sns.lineplot(data = df_G, ax = ax, x = 'start', 
                   y = 'G_to_A_ratio_rolling_avg',
-                  label = 'A/(A + G) at ref G sites (rolling avg)',
+                  label = 'A/all at ref G sites (rolling avg)',
                   color = '#D55E00', linewidth = 0.4, alpha = 0.6)
     elif args.mode == "count":
       df_C['T_rolling_avg'] = df_C['T'].rolling(window = window_size, min_periods = 1).mean()
@@ -126,4 +126,4 @@ def run_tsv_to_plot(args):
       sns.lineplot(data = df, ax = ax2, x = 'start', y = 'qual_avg_rolling_avg', color = '#000000', linewidth = 0.3, alpha = 0.45)
       ax2.set_ylabel('Qual Avg (rolling avg)')
     
-    plt.savefig(os.path.abspath(args.output))
+    plt.savefig(args.output)

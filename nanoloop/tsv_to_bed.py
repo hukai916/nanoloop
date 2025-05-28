@@ -36,9 +36,10 @@ def run_tsv_to_bed(args):
         chunk_iter = pd.read_csv(f, sep = '\t', header = None, names = header, chunksize = 10000)
         for chunk in chunk_iter:
           for _, row in chunk.iterrows():
-            if row['ref_nt'] == 'C':
-              row['C_to_T_ratio'] = row['T'] / (row['C'] + row['T'] + 0.01) * 100 * args.scale 
-              row['C_to_T_ratio'] = int(row['C_to_T_ratio'])
+            if row['ref_nt'] == args.ref_nt:
+              row["non_x_fraction"] = row[args.ref_nt] / (row['C'] + row['T'] + row['G'] + row['A'] + row['N'] + 0.01) * 100 * args.scale 
+              row["non_x_fraction"] = int(row["non_x_fraction"])
+              
               bed_line = f"{row['chr']}\t{row['start']}\t{row['end']}\n"
-              for _ in range(row['C_to_T_ratio']):
+              for _ in range(row["non_x_fraction"]):
                 out.write(bed_line)

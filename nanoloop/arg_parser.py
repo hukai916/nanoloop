@@ -86,11 +86,16 @@ def create_args():
   
   # subcommand: tsv_to_bed
   parser_tsv_to_bed = subparsers.add_parser('tsv_to_bed',
-                                            help = 'Convert TSV file to BED format for MACS3 peak calling. For "--type nt_qual": regions with lower quality scores will generate more simulated read tags, creating peaks in those regions. For "--type nt_count": the number of simulated read tags is proportional to the fraction of C converted to T at each reference C position')
+                                            help = 'Convert TSV file to BED format for MACS3 peak calling. For "--type nt_qual": regions with lower quality scores will generate more simulated read tags, creating peaks in those regions. For "--type nt_count": the number of simulated read tags is proportional to the fraction of non-X (all other nucleotides except X) at each reference X position, use --ref_nt to specify the reference nucleotide of interest')
   parser_tsv_to_bed.add_argument('--tsv', 
                                   type = str, 
                                   required = True,
                                   help = 'Path to input TSV file')
+  parser_tsv_to_bed.add_argument('--ref_nt', 
+                                  type = str,
+                                  choices = ['C', 'T', 'G', 'A'],
+                                  default = 'C',
+                                  help = 'Reference nucleotide of interest, relevant when --type is "nt_count", use this to specify the reference nucleotide of interest, default to "C"')
   parser_tsv_to_bed.add_argument('--output',  
                                   type = str, 
                                   required = True,

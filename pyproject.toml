@@ -1,6 +1,6 @@
 [project]
 name = "nanoloop"
-version = "0.1.5"
+version = "0.1.6"
 description = "Utility tool for detecting R-loops with Nanopore data"
 authors = [
     {name = "hukai916",email = "hukai916@gmail.com"}

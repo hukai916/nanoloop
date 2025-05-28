@@ -8,14 +8,17 @@ def merge_overlapping_intervals(df):
   
   df = df.reset_index(drop = True)
   merged = []
-  current_start, current_end = df.loc[0, 'start'], df.loc[0, 'end']
+  current_start, current_end = df.iloc[0, df.columns.get_loc('start')], df.iloc[0, df.columns.get_loc('end')]
   for i in range(1, len(df)):
-    row = df.loc[i]
-    if row['start'] <= current_end:
-      current_end = max(current_end, row['end'])
+    start = df.iloc[i, df.columns.get_loc('start')]
+    end = df.iloc[i, df.columns.get_loc('end')]
+    
+    if start <= current_end:
+      current_end = max(current_end, end)
     else:
       merged.append((current_start, current_end))
-      current_start, current_end = row['start'], row['end']
+      current_start, current_end = start, end
+      
   merged.append((current_start, current_end))
   return pd.DataFrame(merged, columns = ['start', 'end'])
 
@@ -24,15 +27,17 @@ def merge_nearby_intervals(df, window_size):
     return pd.DataFrame(columns = ['start', 'end'])
 
   merged = []
-  current_start, current_end = df.loc[0, 'start'], df.loc[0, 'end']
+  current_start, current_end = df.iloc[0, df.columns.get_loc('start')], df.iloc[0, df.columns.get_loc('end')]
   
   for i in range(1, len(df)):
-    row = df.loc[i]
-    if row['start'] - current_end <= window_size:
-      current_end = max(current_end, row['end'])
+    start = df.iloc[i, df.columns.get_loc('start')]
+    end = df.iloc[i, df.columns.get_loc('end')]
+    
+    if start - current_end <= window_size:
+      current_end = max(current_end, end)
     else:
       merged.append((current_start, current_end))
-      current_start, current_end = row['start'], row['end']
+      current_start, current_end = start, end
 
   merged.append((current_start, current_end))
   
@@ -43,7 +48,9 @@ def group_func_nt_qual(x, low_qual_cutoff = 20, frac_cutoff = 0.3, window_size =
   Each chr is a group, perform sliding window approach within each group.
   '''
   
-  chr = x['chr'].iloc[0]
+  x = x.reset_index(drop=True)
+  
+  chr = x.iloc[0, x.columns.get_loc('chr')]
   print("Processing chromosome: ", chr)
   # min, max = x['start'].min(), x['start'].max()
   if low_qual_cutoff == 10:
@@ -72,15 +79,19 @@ def group_func_nt_count(x, conversion_cutoff = 0.1, window_size = 20, merge_near
     Each chr is a group, perform sliding window approach within each group.
     '''
     
-    chr = x['chr'].iloc[0]
+    x = x.reset_index(drop=True)
+    
+    chr = x.iloc[0, x.columns.get_loc('chr')]
     print("Processing chromosome: ", chr)
     
-    x = x.copy()
-    c_positions = x[x['ref_nt'] == 'C'].index.tolist()
-    
+    # x = x.copy()
+    # c_positions = x[x['ref_nt'] == 'C'].index.tolist()
+    c_positions = [i for i, nt in enumerate(x['ref_nt']) if nt == 'C']
+
     # For each non-C position, find the next C position and use its values
     for i in range(len(x)):
-      if x.loc[i, 'ref_nt'] != 'C':
+      if x.iloc[i, x.columns.get_loc('ref_nt')] != 'C':
+      # if x.loc[i, 'ref_nt'] != 'C': within groupby.apply, the index is not the same as the original index
         next_c_pos = None
         for c_pos in c_positions:
           if c_pos > i:
@@ -88,8 +99,8 @@ def group_func_nt_count(x, conversion_cutoff = 0.1, window_size = 20, merge_near
             break
     
         if next_c_pos is not None:
-          x.loc[i, 'C'] = x.loc[next_c_pos, 'C']
-          x.loc[i, 'T'] = x.loc[next_c_pos, 'T']
+          x.iloc[i, x.columns.get_loc('C')] = x.iloc[next_c_pos, x.columns.get_loc('C')]
+          x.iloc[i, x.columns.get_loc('T')] = x.iloc[next_c_pos, x.columns.get_loc('T')]
           
     # x = x[x['ref_nt'] == 'C']
     x['conversion_frac'] = x['T'] / (x['T'] + x['C'] + 0.01)
