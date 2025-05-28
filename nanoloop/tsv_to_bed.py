@@ -37,7 +37,7 @@ def run_tsv_to_bed(args):
         for chunk in chunk_iter:
           for _, row in chunk.iterrows():
             if row['ref_nt'] == args.ref_nt:
-              row["non_x_fraction"] = row[args.ref_nt] / (row['C'] + row['T'] + row['G'] + row['A'] + row['N'] + 0.01) * 100 * args.scale 
+              row["non_x_fraction"] = (1 - row[args.ref_nt] / (row['C'] + row['T'] + row['G'] + row['A'] + row['N'] + 0.01)) * 100 * args.scale 
               row["non_x_fraction"] = int(row["non_x_fraction"])
               
               bed_line = f"{row['chr']}\t{row['start']}\t{row['end']}\n"

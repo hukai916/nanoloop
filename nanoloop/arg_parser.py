@@ -108,7 +108,7 @@ def create_args():
                                   type = str, 
                                   required = True,
                                   choices = ['nt_count', 'nt_qual'],
-                                  help = 'Type of input TSV file being used: "nt_count" or "nt_qual", the former is for nucleotide species count at each reference C site and the latter is for nucleotide read quality count at each reference site')
+                                  help = 'Type of input TSV file being used: "nt_count" or "nt_qual", the former is for nucleotide species count at each reference X site (specified by --ref_nt) and the latter is for nucleotide read quality count at each reference X site')
   
   # subcommand: tsv_to_peak
   parser_tsv_to_peak = subparsers.add_parser('tsv_to_peak',
