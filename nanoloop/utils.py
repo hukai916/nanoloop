@@ -1,10 +1,8 @@
 import pysam
 import os
 import io
-from statistics import mean
 import pandas as pd
 import numpy as np
-from statistics import stdev
 import re
 from collections import Counter
 import gzip
@@ -74,7 +72,7 @@ def process_bam_chunk_nt_qual(ref_name, start_pos, end_pos, bam_path, ref_path, 
 
   results = []
   with pysam.AlignmentFile(bam_path, "rb") as bam, pysam.FastaFile(ref_path) as ref:
-    temp_file = os.path.join(temp_dir, '{}_{}_{}.tsv'.format(ref_name, start_pos, end_pos))
+    temp_file = os.path.join(temp_dir, '{}_{}_{}.tsv'.format(ref_name.replace("_", "."), start_pos, end_pos))
   
     for pileup_column in bam.pileup(ref_name, start_pos, end_pos, min_base_quality = 0, max_depth = 2_147_483_647):
       pos = pileup_column.pos
@@ -130,7 +128,7 @@ def process_bam_chunk_nt_count(ref_name, start_pos, end_pos, bam_path, ref_path,
 
   results = []
   with pysam.AlignmentFile(bam_path, "rb") as bam, pysam.FastaFile(ref_path) as ref:
-    temp_file = os.path.join(temp_dir, '{}_{}_{}.tsv'.format(ref_name, start_pos, end_pos))
+    temp_file = os.path.join(temp_dir, '{}_{}_{}.tsv'.format(ref_name.replace("_", "."), start_pos, end_pos))
   
     for pileup_column in bam.pileup(ref_name, start_pos, end_pos, min_base_quality = 0, max_depth = 2_147_483_647):
       pos = pileup_column.pos

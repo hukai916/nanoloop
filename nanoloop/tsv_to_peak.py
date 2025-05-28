@@ -1,8 +1,4 @@
 import os
-from .utils import ensure_tsv_index, extract_range_from_tsv
-import seaborn as sns
-import numpy as np  
-import matplotlib.pyplot as plt
 import dask.dataframe as dd
 import pandas as pd
 
@@ -146,5 +142,5 @@ def run_tsv_to_peak(args):
 
   # Drop peaks that are too short 
   df_res = df_res[df_res['end'] - df_res['start'] >= args.min_peak_length]
-  df_res.to_csv(args.output, sep = '\t', index = False, compression = 'gzip', header = False)
-  print("Peaks called and saved to ", args.output, sep = '')
+  df_res.to_csv(os.path.abspath(args.output), sep = '\t', index = False, compression = 'gzip', header = False)
+  print("Peaks called and saved to ", os.path.abspath(args.output), sep = '')

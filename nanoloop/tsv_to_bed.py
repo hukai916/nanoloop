@@ -1,8 +1,5 @@
 import os
-from .utils import ensure_tsv_index, extract_range_from_tsv
-import seaborn as sns
-import numpy as np  
-import matplotlib.pyplot as plt
+from .utils import ensure_tsv_index
 import gzip
 import pandas as pd
 def run_tsv_to_bed(args):
@@ -16,7 +13,7 @@ def run_tsv_to_bed(args):
   ensure_tsv_index(args.tsv)
 
   if args.type == 'nt_qual':
-    with gzip.open(args.output, 'wt') as out:
+    with gzip.open(os.path.abspath(args.output), 'wt') as out:
       with gzip.open(args.tsv, 'rt') as f:
         header = f.readline()[1:].strip().split('\t')
         chunk_iter = pd.read_csv(f, sep = '\t', header = None, names = header, chunksize = 10000)
@@ -33,7 +30,7 @@ def run_tsv_to_bed(args):
               out.write(bed_line)
 
   elif args.type == 'nt_count':
-    with gzip.open(args.output, 'wt') as out:
+    with gzip.open(os.path.abspath(args.output), 'wt') as out:
       with gzip.open(args.tsv, 'rt') as f:
         header = f.readline()[1:].strip().split('\t')
         chunk_iter = pd.read_csv(f, sep = '\t', header = None, names = header, chunksize = 10000)

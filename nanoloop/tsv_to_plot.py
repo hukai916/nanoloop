@@ -126,4 +126,4 @@ def run_tsv_to_plot(args):
       sns.lineplot(data = df, ax = ax2, x = 'start', y = 'qual_avg_rolling_avg', color = '#000000', linewidth = 0.3, alpha = 0.45)
       ax2.set_ylabel('Qual Avg (rolling avg)')
     
-    plt.savefig(args.output)
+    plt.savefig(os.path.abspath(args.output))

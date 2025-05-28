@@ -16,10 +16,14 @@ def create_args():
   subparsers = parser.add_subparsers(dest = 'command')
   
   # Add version command
-  from . import __version__
+  try:
+    from . import __version__
+    version = __version__
+  except ImportError:
+    version = "unknown"
   parser.add_argument('--version',
                      action = 'version',
-                     version = __version__)
+                     version = version)
 
   # subcommand: bam_to_tsv
   parser_bam_to_tsv = subparsers.add_parser('bam_to_tsv',
@@ -174,6 +178,3 @@ def create_args():
       parser.error('The --output path must end with .bed.gz!')
 
   return args
-
-
-

@@ -63,9 +63,11 @@ def run_bam_to_tsv(args):
       
       tsv_files = glob.glob(os.path.join(temp_dir, '*.tsv'))
       tsv_sorted = sorted(tsv_files, key = lambda f: (parse_filename(f)[0], parse_filename(f)[1]))
-      if not os.path.exists(os.path.dirname(args.output)):
-        os.makedirs(os.path.dirname(args.output))
-      with pysam.BGZFile(args.output, 'w') as out:
+      for tsv in tsv_sorted:
+        print(tsv)
+      if not os.path.exists(os.path.dirname(os.path.abspath(args.output))):
+        os.makedirs(os.path.dirname(os.path.abspath(args.output)))
+      with pysam.BGZFile(os.path.abspath(args.output), 'w') as out:
         out.write(header.encode())
 
         for path in tsv_sorted:
