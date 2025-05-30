@@ -1,5 +1,6 @@
 import argparse
 from .utils import validate_range
+from .constants import ref_mutations
 
 def str2bool(v):
   if isinstance(v, bool):
@@ -156,8 +157,92 @@ def create_args():
                                   default = 1,
                                   help = 'Number of CPUs to use, larger number may increase the memory usage significantly')
   
-  args = parser.parse_args()
+  # subcommand: bam_to_json
+  parser_bam_to_json = subparsers.add_parser('bam_to_json',
+                                            help = 'Parse BAM file and output JSON file that contains per read information including read id, reference name, reference start, reference end, reference sequence, reference base, read base, read quality, and detailed mutation information')
+  parser_bam_to_json.add_argument('--bam', 
+                                  type = str, 
+                                  required = True,
+                                  help = 'Path to input BAM file')
+  parser_bam_to_json.add_argument('--ref', 
+                                  type = str, 
+                                  required = True,
+                                  help = 'Path to reference fasta file')
+  parser_bam_to_json.add_argument('--output', 
+                                  type = str, 
+                                  required = True,
+                                  help = 'Path to output JSON file, must be ended with ".ndjson.gz"')
+  parser_bam_to_json.add_argument('--ncpus', 
+                                  type = int, 
+                                  default = 1,
+                                  help = 'Number of CPUs to use')
   
+  # subcommand: filter_json
+  parser_filter_json = subparsers.add_parser('filter_json',
+                                            help = 'Filter NDJSON records based on the total number of qualified mutations in each read, both "--by count" and "--by frac" are supported')
+  parser_filter_json.add_argument('--json', 
+                                  type = str, 
+                                  required = True,
+                                  help = 'Path to input NDJSON file')
+  parser_filter_json.add_argument('--by', 
+                                  type = str, 
+                                  default = 'count',
+                                  choices = ['count', 'frac'],
+                                  help = 'Filter by count or fraction of mutations')
+  parser_filter_json.add_argument('--count_cutoff', 
+                                  type = int, 
+                                  default = 10,
+                                  help = 'Reads with at least this number of qualified mutations ("--base _quality_cutoff" is used to define qualified mutations) will be kept')
+  parser_filter_json.add_argument('--frac_cutoff', 
+                                  type = float, 
+                                  default = 0.01,
+                                  help = 'Reads with at least this fraction of qualified mutations ("--base_quality_cutoff" is used to define qualified mutations) will be kept, the fraction is calculated as (the number of qualified mutations) / (total number of reference sites in the read alignment)')
+  parser_filter_json.add_argument('--base_quality_cutoff', 
+                                  type = int, 
+                                  default = 30,
+                                  help = 'Mutations with base quality below this cutoff will be filtered out')
+  parser_filter_json.add_argument('--output', 
+                                  type = str, 
+                                  required = True,
+                                  help = 'Path to output filtered NDJSON file')
+  parser_filter_json.add_argument('--ncpus', 
+                                  type = int, 
+                                  default = 1,
+                                  help = 'Number of CPUs to use for parallel processing')
+
+  # subcommand: json_to_hotspot
+  parser_json_to_hotspot = subparsers.add_parser('json_to_hotspot',
+                                                help = 'Parse NDJSON file and output BED-lie file that contains "mutation hotspot" information with the following columns: chr, start, end (chr, start, and end are reference coordinates), read_id, AtoT, AtoC, AtoG, CtoT, CtoC, CtoG, GtoT, GtoC, GtoA, etc. (each column is the number of mutations of the corresponding mutation type)')
+  parser_json_to_hotspot.add_argument('--json', 
+                                      type = str, 
+                                      required = True,
+                                      help = 'Path to input NDJSON file')
+  parser_json_to_hotspot.add_argument('--mutation_type', 
+                                      type = str, 
+                                      default = 'all',
+                                      help = 'Mutation type to consider, "all" means all mutations will be considered, "CtoT" means only CtoT mutations will be considered, "CtoT|CtoG" means both CtoT and CtoG mutations will be considered, etc.')
+  parser_json_to_hotspot.add_argument('--window_size', 
+                                      type = int, 
+                                      default = 25,
+                                      help = 'Window size for hotspot calling, default to 25')
+  parser_json_to_hotspot.add_argument('--window_step', 
+                                      type = int, 
+                                      default = 5,
+                                      help = 'Window step for hotspot calling, default to 5')
+  parser_json_to_hotspot.add_argument('--mutation_frac_cutoff', 
+                                      type = float, 
+                                      default = 0.5,
+                                      help = 'Mutation fraction cutoff for hotspot calling, default to 0.5')
+  parser_json_to_hotspot.add_argument('--output', 
+                                      type = str, 
+                                      required = True,
+                                      help = 'Path to output BED file, must be ended with ".bed.gz", note that the output BED is NOT sorted')
+  parser_json_to_hotspot.add_argument('--ncpus', 
+                                      type = int, 
+                                      default = 1,
+                                      help = 'Number of CPUs to use for parallel processing')
+  args = parser.parse_args()
+
   if args.command == 'bam_to_tsv':
     if not args.output.endswith('.tsv.gz'):
       parser.error('The --output path must end with ".tsv.gz"!')
@@ -181,5 +266,25 @@ def create_args():
   if args.command == 'tsv_to_peak':
     if not args.output.endswith('.bed.gz'):
       parser.error('The --output path must end with .bed.gz!')
+  
+  if args.command == 'bam_to_json':
+    if not args.output.endswith('.ndjson.gz'):
+      parser.error('The --output path must end with .ndjson.gz!')
+      
+  if args.command == 'filter_json':
+    if not args.json.endswith('.ndjson.gz'):
+      parser.error('The --json must end with .ndjson.gz!')
+    if not args.output.endswith('.ndjson.gz'):
+      parser.error('The --output path must end with .ndjson.gz!')
+  
+  if args.command == 'json_to_hotspot':
+    if not args.json.endswith('.ndjson.gz'):
+      parser.error('The --json must end with .ndjson.gz!')
+    if not args.output.endswith('.bed.gz'):
+      parser.error('The --output path must end with .bed.gz!')
+    if not args.mutation_type == 'all':
+      for mutation_type in args.mutation_type.split('|'):
+        if mutation_type not in ref_mutations:
+          parser.error(f'Invalid "mutation_type": {mutation_type}')
 
   return args
