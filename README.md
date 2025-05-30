@@ -53,6 +53,10 @@ Calls R-loop peaks using a rolling average approach.
 
 Note that when `--type nt_count`, the TSV input must be from `bam_to_tsv` with `--type nt_count`; and when `--type nt_qual`, the TSV input must be from `bam_to_tsv` with `--type nt_qual`.
 
+### `bam_to_json`
+Parse BAM file and output JSON file that contains per read information including read id, reference name, reference start, reference end, reference sequence, reference base, read base, read quality, etc. Example output:
+
+
 ## Installation
 ```
 pip install nanoloop
@@ -271,3 +275,82 @@ p1214   5093    6061    p1214_no_pcr_nt_count_macs3_peak_1      2187    .       
 Below is an IGV snapshot comparing peaks called with different approaches:
 
 ![IGV snapshot](examples/res/IGV_snapshot.jpg)
+
+### Use read-centric approach
+In addition to using the referenc-centric method above, we can also use the read-centric approach to identify R-loop regions. The idea is to locate the "mutation hotspots" in each read, extract them as a BED file, and then call peaks using MACS3.
+
+#### Step 1: generate JSON
+We first need to parse BAM file with `nanoloop bam_to_json` and output a JSON file containing per read information including read id, reference name, reference start, reference end, reference sequence, mutational information such as the location, type, and base quality of each mutation in every read. This JSON file can be further filtered to remove reads that are not of interest, e.g. reads with too few mutations (indicating no R-loop signal).
+
+```bash
+nanoloop bam_to_json \
+  --bam examples/bam/p1214_with_pcr.bam \
+  --ref examples/ref/p1214.fa \
+  --output examples/res/p1214_with_pcr.ndjson.gz
+```
+
+#### Step 2: filter JSON 
+We can use `nanoloop filter_json` to filter out reads with too few mutations. Both `--by count` and `--by frac` options can be used to define the minimum number of mutations or the minimum fraction of mutations in a read, respectively. Mutations with low base quality are possibly false positive mutations and are filtered out using `--base_quality_cutoff`. 
+
+```bash
+nanoloop filter_json \
+  --json examples/res/p1214_with_pcr.ndjson.gz \
+  --by count \
+  --count_cutoff 10 \
+  --base_quality_cutoff 30 \
+  --output examples/res/p1214_with_pcr_filtered.ndjson.gz
+```
+
+6464 out of 9775 reads passed the filter. They will be used to extract mutation hotspots.
+
+#### Step 3: extract mutation hotspots
+We can use `nanoloop json_to_hotspot` to extract mutation hotspots from the filtered JSON file. The idea is to use a sliding window approach to identify regions with significant mutation density in each read. The output is a BED-like file containing the mutation hotspots in each read, that can be passed to MACS3 for peak calling. Use `--mutation_type` to define the mutation type to consider when calculating the mutation fraction per window, e.g. "all" means all mutations will be used, while "CtoT" means only CtoT mutations will be considered, and "CtoT|CtoG" means both CtoT and CtoG mutations will be considered, etc. Use `--mutation_frac_cutoff` to define the minimum mutation fraction in a window to be considered as a mutation hotspot. Use `--window_size` to define the window size for calculating the mutation fraction per window. By default, "hotspot windows" that are within `--window_size` distance will be merged. Below is an example identifying CtoT mutation hotspots in each read.
+
+```bash
+nanoloop json_to_hotspot \
+  --json examples/res/p1214_with_pcr_filtered.ndjson.gz \
+  --mutation_type CtoT \
+  --output examples/res/p1214_with_pcr_filtered_hotspot.bed.gz
+```
+
+Below is an example of the output BED file. Note that the first three columns represent the reference coordinates of the hotspot in each read, and the fourth column is the read id.
+
+```bash
+zcat < examples/res/p1214_with_pcr_filtered_hotspot.bed.gz | head
+```
+```
+p1214   2647    2672    c2b303ae-93f5-48d3-a76f-5cba776042b5
+p1214   5154    5199    b317febd-9ace-4b5e-bafe-ad79ec06669a
+p1214   5101    5151    f0a884f9-a99f-481f-8d34-3e8c95b34a01
+p1214   5256    5286    5fc1d6fe-bde3-4292-a833-9baa673b58d7
+p1214   5628    5673    e930d765-6a87-447a-a730-ecc28338d993
+p1214   5276    5321    58ec2b60-da32-4570-9c12-685097a9dc48
+p1214   4685    4710    d3c6e465-fb91-449e-9ed1-22043f1cc624
+p1214   5116    5141    054dfcee-3310-4e94-b6db-de84e347413f
+p1214   5420    5460    ff9eb453-6578-4320-85cf-e5b64a5e2002
+p1214   5326    5366    474d6edd-40c3-49d3-b52c-b99a2d62a55a
+```
+
+A total of 3362 CtoT mutation hotspots were detected in the 6464 reads passed the filter. The BED file can be passed to MACS3 for peak calling.
+
+
+locate the "mutation hotspots" in each read, extract them as a BED file, and then call peaks using MACS3.
+
+```bash
+macs3 callpeak -f BED \
+  -t examples/res/p1214_with_pcr_filtered_hotspot.bed.gz \
+  -n p1214_with_pcr_filtered_hotspot_macs3 \
+  -g 8779 \
+  --keep-dup all \
+  --nomodel \
+  --extsize 200 \
+  --outdir examples/res/p1214_with_pcr_filtered_hotspot_macs3_peaks
+```
+
+A single peak is called by MACS3, which is consistent with the reference-based approach above.
+```bash
+cat examples/res/p1214_with_pcr_filtered_hotspot_macs3_peaks/p1214_with_pcr_filtered_hotspot_macs3_peaks.narrowPeak | head
+```
+```
+p1214   4862    5942    p1214_with_pcr_filtered_hotspot_macs3_peak_1    8661    .       14.6149 869.938 866.131 458
+```

@@ -159,7 +159,7 @@ def create_args():
   
   # subcommand: bam_to_json
   parser_bam_to_json = subparsers.add_parser('bam_to_json',
-                                            help = 'Parse BAM file and output JSON file that contains per read information including read id, reference name, reference start, reference end, reference sequence, reference base, read base, read quality, and detailed mutation information')
+                                            help = 'Parse BAM file and output JSON file that contains per read information including read id, reference name, reference start, reference end, reference sequence, reference base, read base, read quality, etc.')
   parser_bam_to_json.add_argument('--bam', 
                                   type = str, 
                                   required = True,
@@ -220,7 +220,7 @@ def create_args():
   parser_json_to_hotspot.add_argument('--mutation_type', 
                                       type = str, 
                                       default = 'all',
-                                      help = 'Mutation type to consider, "all" means all mutations will be considered, "CtoT" means only CtoT mutations will be considered, "CtoT|CtoG" means both CtoT and CtoG mutations will be considered, etc.')
+                                      help = 'Mutation type to consider when calculating the mutation_frac per window, "all" means all mutations will be considered, "CtoT" means only CtoT mutations will be considered, "CtoT|CtoG" means both CtoT and CtoG mutations will be considered, etc.')
   parser_json_to_hotspot.add_argument('--window_size', 
                                       type = int, 
                                       default = 25,
