@@ -74,12 +74,16 @@ def create_args():
                                   help = 'Plot mode: "ratio" or "count", the former is for C_to_T fraction and the latter is for raw count at each site')
   parser_tsv_to_plot.add_argument('--add_gc', 
                                   type = str2bool, 
+                                  const = True,
+                                  nargs = '?',
                                   default = False,
-                                  help = 'Add GC content to plot, note that GC content is calculated from the TSV file, which may not cover all reference positions')
+                                  help = 'Add GC content to plot, note that GC content is calculated from the TSV file, which may not cover all reference positions, default to False')
   parser_tsv_to_plot.add_argument('--add_qual_avg', 
                                   type = str2bool, 
+                                  nargs = '?',
+                                  const = True,
                                   default = False,
-                                  help = 'Relevant when --type is "nt_qual", add rolling average of quality score to plot, mutual exclusive to --add_gc')
+                                  help = 'Relevant when --type is "nt_qual", add rolling average of quality score to plot, mutual exclusive to --add_gc, default to False')
   parser_tsv_to_plot.add_argument('--output', 
                                   type = str, 
                                   required = True,
@@ -146,6 +150,8 @@ def create_args():
                                   help = 'Window size for peak calling, default to 50') 
   parser_tsv_to_peak.add_argument('--merge_nearby_peaks', 
                                   type = str2bool, 
+                                  nargs = '?',
+                                  const = True,
                                   default = True,
                                   help = 'Merge nearby peaks, peaks that are within the (2 * window size) will be merged into one peak, default to True')
   parser_tsv_to_peak.add_argument('--output', 
@@ -233,14 +239,61 @@ def create_args():
                                       type = float, 
                                       default = 0.5,
                                       help = 'Mutation fraction cutoff for hotspot calling, default to 0.5')
+  parser_json_to_hotspot.add_argument('--include_read_id', 
+                                      type = str2bool,
+                                      nargs = '?',
+                                      const = True,
+                                      default = False,
+                                      help = 'Include read id in the output BED file, default to False')
+  parser_json_to_hotspot.add_argument('--include_ref_seq', 
+                                      type = str2bool, 
+                                      nargs = '?', 
+                                      const = True,
+                                      default = False,
+                                      help = 'Include reference sequence in the output BED file, default to False')
+  parser_json_to_hotspot.add_argument('--include_mutation_details', 
+                                      type = str2bool,
+                                      nargs = '?',
+                                      const = True,
+                                      default = False,
+                                      help = 'Include mutation details in the output BED file, default to False. Setting to True will include mutation details in the output BED file, but will increase the size of the output BED file and the resulting BED-like file may not be compatible with some downstream tools like MACS3')
   parser_json_to_hotspot.add_argument('--output', 
                                       type = str, 
                                       required = True,
                                       help = 'Path to output BED file, must be ended with ".bed.gz", note that the output BED is NOT sorted')
   parser_json_to_hotspot.add_argument('--ncpus', 
                                       type = int, 
-                                      default = 1,
+                                      default = 1,  
                                       help = 'Number of CPUs to use for parallel processing')
+  
+  # subcommand: stat_hotspot
+  parser_stat_hotspot = subparsers.add_parser('stat_hotspot',
+                                              help = 'Parse hotspot file (.bed.gz) and generate statistics/plots')
+  parser_stat_hotspot.add_argument('--hotspot', 
+                                    type = str, 
+                                    required = True,
+                                    help = 'Path to input hotspot bed.gz file')
+  parser_stat_hotspot.add_argument('--output', 
+                                    type = str, 
+                                    required = True,
+                                    help = 'Path to output directory')
+  
+  # subcommand: cluster_hotspot
+  parser_cluster_hotspot = subparsers.add_parser('cluster_hotspot',
+                                                help = 'Cluster hotspot file (.bed.gz) based on their genomic locations and mutation types')
+  parser_cluster_hotspot.add_argument('--hotspot', 
+                                      type = str, 
+                                      required = True,
+                                      help = 'Path to input hotspot bed.gz file')
+  parser_cluster_hotspot.add_argument('--output', 
+                                      type = str, 
+                                      required = True,
+                                      help = 'Path to output directory')
+  parser_cluster_hotspot.add_argument('--range',
+                                      type = str,
+                                      required = True,
+                                      help = 'Reference range in the format of chr:start-end, e.g. chr1:100000-200000')       
+   
   args = parser.parse_args()
 
   if args.command == 'bam_to_tsv':
@@ -286,5 +339,14 @@ def create_args():
       for mutation_type in args.mutation_type.split('|'):
         if mutation_type not in ref_mutations:
           parser.error(f'Invalid "mutation_type": {mutation_type}')
+  
+  if args.command == 'stat_hotspot':
+    if not args.hotspot.endswith('.bed.gz'):
+      parser.error('The --hotspot path must end with .bed.gz!')
+  
+  if args.command == 'cluster_hotspot':
+    if not args.hotspot.endswith('.bed.gz'):
+      parser.error('The --hotspot path must end with .bed.gz!')
+    validate_range(args.range)
 
   return args

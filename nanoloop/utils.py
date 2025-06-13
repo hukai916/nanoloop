@@ -361,7 +361,7 @@ def process_filter_json(chunk, by, count_cutoff, frac_cutoff, base_quality_cutof
   # window_step: 5
   # mutation_frac_cutoff: 0.5
     # if in a window, at least 50% of the bases are mutated, that window will be treated as a "hotspot" window. The fraction is calculated by dividing the number of interested muations (mutation_type) by the total number of that base in the reference window. For example, if mutation_type is "all", then it is calculated by dividing the number of mutations by the total number of bases in the reference window; if mutation_type is "CtoT|GtoA", then it is calculated by dividing the number of CtoT and GtoA mutations by the total number of C and G bases in the reference window.
-def process_json_to_hotspot(chunk, mutation_type, window_size, window_step, mutation_frac_cutoff, queue): 
+def process_json_to_hotspot(chunk, mutation_type, window_size, window_step, mutation_frac_cutoff, include_read_id, include_ref_seq, include_mutation_details, queue): 
   print("Processing chunk_id", id(chunk), "...")
 
   if mutation_type == "all":
@@ -399,21 +399,37 @@ def process_json_to_hotspot(chunk, mutation_type, window_size, window_step, muta
         
         mutation_frac = mutation_count / ref_base_count if ref_base_count > 0 else 0 
         if mutation_frac >= mutation_frac_cutoff:
-          hotspot_windows.append([ref_s, ref_d, ref_chr])
+          hotspot_windows.append([ref_chr, ref_s, ref_d])
 
       # Merge hotspot windows if within window_step
       for hotspot in hotspot_windows:
         if not hotspots_per_read:
           hotspots_per_read.append(hotspot)
         else:
-          if hotspot[0] - hotspots_per_read[-1][1] < window_step:
-            hotspots_per_read[-1][1] = hotspot[1]
+          if hotspot[1] - hotspots_per_read[-1][2] < window_step:
+            hotspots_per_read[-1][2] = hotspot[2]
           else:
             hotspots_per_read.append(hotspot)
       
-      # Add read_id to each hotspot
-      for hotspot in hotspots_per_read:
-        hotspot.append(record['read_id'])
+      # Add read_id, ref_seq to each hotspot
+      if include_read_id:
+        for hotspot in hotspots_per_read:
+          hotspot.append(record['read_id'])
+      if include_ref_seq:
+        for hotspot in hotspots_per_read:
+          hotspot_seq = record['ref_seq'][hotspot[1] - record['ref_start']:hotspot[2] - record['ref_start']]
+          hotspot.append(hotspot_seq)
+      if include_mutation_details:
+        for hotspot in hotspots_per_read:
+          for ref_mut in ref_mutations:
+            mutation_count = 0
+            for ref_pos in record[ref_mut]['ref_pos']:
+              if ref_pos in range(hotspot[1], hotspot[2]):
+                mutation_count += 1
+            hotspot.append(mutation_count)
+          # Also add aligned reference range:
+          hotspot.append(record['ref_start'])
+          hotspot.append(record['ref_end'])
       
       hotspots_all.append(hotspots_per_read)
 

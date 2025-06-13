@@ -7,7 +7,6 @@ from collections import Counter
 import os
 import random
 import tempfile
-import multiprocessing  # for Process and Queue
 from multiprocessing import Process, Queue
 from .utils import process_bam_chunk_json, ensure_bam_index, chunk_bam
 

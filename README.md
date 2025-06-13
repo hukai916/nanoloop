@@ -1,61 +1,63 @@
 # nanoloop: Identify R-loops with Nanopore Reads
 
 - [Introduction](#introduction)
+- [Installation](#installation)
+- [Parameters](#parameters)
 - [Core Functions](#core-functions)
   - [bam_to_tsv](#bam_to_tsv)
   - [tsv_to_plot](#tsv_to_plot)
   - [tsv_to_bed](#tsv_to_bed)
   - [tsv_to_peak](#tsv_to_peak)
-- [Installation](#installation)
-- [Parameters](#parameters)
+  - [bam_to_json](#bam_to_json)
+  - [filter_json](#filter_json)
+  - [json_to_hotspot](#json_to_hotspot)
+  - [stat_hotspot](#stat_hotspot)
+  - [cluster_hotspot](#cluster_hotspot)
 - [Examples](#examples)
+  - [Without PCR](#without-pcr-reference-centric)
+    - [Using base quality](#using-base-quality---type-nt_qual)
+    - [Using base count](#using-base-count---type-nt_count)
+  - [With PCR](#with-pcr-read-centric)
+- [Bug report](#bug-report)
 
 ## Introduction
 The `nanoloop` library enables the identification of R-loop regions using nanopore sequencing data.
 
-**R-loops** are three-stranded nucleic acid structures formed when nascent RNA hybridizes with its DNA template, displacing the non-template DNA strand. They play critical roles in transcription regulation, DNA replication, and repair. Dysregulated R-loops are associated with genomic instability and disease. 
+**R-loops** are three-stranded nucleic acid structures formed when nascent RNA hybridizes with its DNA template, displacing the non-template DNA strand. They play critical roles in transcription regulation, DNA replication, and repair. Dysregulated R-loops are associated with genomic instability and disease. Accurately identifying the genomic locations of R-loop regions provides a critical foundation for subsequent mechanistic investigations. The combination of long-read Nanopore sequencing and A3A treatment enables precise mapping of R-loops. In A3A-treated samples, unprotected single-stranded DNA in R-loops undergoes cytosine (C) deamination to uracil (dU). There are at least two strategies for identifying R-loops, depending on whether the protocol includes an additional PCR step.
 
-In A3A-treated samples, unprotected single-stranded DNA in R-loops undergoes cytosine (C) deamination to uracil (dU). When using standard Dorado basecalling models, these dU sites are frequently **miscalled as C or T with lower basecalling quality**. `nanoloop` leverages this signature to:
+### Without PCR (reference-centric)
+In the absence of PCR amplification, uracil (dU) residues remain unaltered. When basecalling is performed using standard Dorado models, these dU sites are frequently miscalled as C or T with reduced basecalling quality scores. Additionally, the basecalling qualities of bases neighboring dU sites are often reduced as well. We leverage this signature and implement a reference-centric approach in `nanoloop`to:
 
-+ Quantify and visualize basecalling quality over specified genomic regions
++ Quantify and visualize basecalling quality across specified genomic regions
 
-+ Quantify and visualize C-to-T conversion frequencies over specified genomic regions
++ Quantify and visualize C-to-T conversion frequencies within those regions
 
-+ Simulate MACS3-compatible BED files for peak calling
++ Generate MACS3-compatible BED files for downstream peak calling
 
-+ Call R-loop peaks using a rolling average approach
++ Identify R-loop peaks using a rolling average-based detection algorithm
 
-## Core Functions
+The reference-centric workflow operates as follows: ![Without PCR](docs/images/without_pcr.svg)
 
-### `bam_to_tsv`
-Converts a BAM file to a bgzipped TSV file. The output reports per-position statistics: base count distribution (if `--type nt_count`) or base quality distribution (if `--type nt_qual`).
+This strategy is termed reference-centric because `nanoloop` scans each position along the reference genome using a sliding window approach. It identifies candidate R-loop regions (peaks) where the window contains an abnormally high fraction of bases with reduced basecalling quality (`--type nt_qual`) or elevated C-to-T conversion rates (`--type nt_count`).
 
-### `tsv_to_plot`
-Generates plots from TSV files for a given genomic region:
+In addition, `nanoloop` can simulate a BED file in which reference positions with a higher fraction of low-quality basecalls or more C-to-T miscalls receive greater coverage. This BED file can then be used as input to popular peak callers like `macs3` for peak calling.
 
-+ `--type nt_qual`: uses TSVs from `nanoloop bam_to_tsv --type nt_qual` and generates plot depicting base quality distribution
-+ `--type nt_count`: uses TSVs from `nanoloop bam_to_tsv --type nt_count` and generates plot depicting base count distribution
+For detailed usage, see the [Example](#without_pcr) section.
 
-Note that when `--type nt_count`, the TSV input must be from `bam_to_tsv` with `--type nt_count`; and when `--type nt_qual`, the TSV input must be from `bam_to_tsv` with `--type nt_qual`.
+### With PCR (read-centric)
+Adding a PCR step converts dU into T, effectively creating C-to-T mutations in Nanopore sequencing reads. At the same time, additional mutation patterns can be detected, enabling co-identification of other chromatin features alongside R-loops. 
 
-### `tsv_to_bed`
-Simulates a MACS3-compatible BED file:
+In addition to the reference-centric strategy, `nanoloop` implements a read-centric approach that locates candidate R-loop regions by identifying mutation hotspots within individual reads. This strategy also uses a sliding-window scan: regions with unusually high mutation density in each read are flagged as hotspots and can be passed directly to `macs3` for peak calling. Main functionalities include:
 
-+ `--type nt_qual`: uses TSVs from `nanoloop bam_to_tsv --type nt_qual`, lower average quality yields more tags
-+ `--type nt_count`: uses TSVs from `nanoloop bam_to_tsv --type nt_count`, more tags where C-to-T conversion is higher
++ Convert BAM files into JSON format containing relevant mutation information for downstream analyses
 
-Note that when `--type nt_count`, the TSV input must be from `bam_to_tsv` with `--type nt_count`; and when `--type nt_qual`, the TSV input must be from `bam_to_tsv` with `--type nt_qual`.
++ Filter JSON data based on various metrics
 
-### `tsv_to_peak`
-Calls R-loop peaks using a rolling average approach. 
++ Detect mutation hotspots and perform quality control using the JSON data
 
-+ Supports both `--type nt_qual` and `--type nt_count`
+The strategy operates as follows: ![With PCR](docs/images/with_pcr.svg)
 
-Note that when `--type nt_count`, the TSV input must be from `bam_to_tsv` with `--type nt_count`; and when `--type nt_qual`, the TSV input must be from `bam_to_tsv` with `--type nt_qual`.
-
-### `bam_to_json`
-Parse BAM file and output JSON file that contains per read information including read id, reference name, reference start, reference end, reference sequence, reference base, read base, read quality, etc. Example output:
-
+Both the reference-centric and read-centric workflows include built-in plotting functions for quality control. For detailed usage, see the Examples section.
 
 ## Installation
 ```
@@ -87,18 +89,76 @@ options:
 
 You can also run subcommand-specific help, e.g.`nanoloop bam_to_tsv -h`, etc.
 
+## Core Functions
+
+For a complete list of supported options, run `nanoloop <function_name> -h`, replacing <function_name> with the name of the specific subcommand you're interested in.
+
+### `bam_to_tsv`
+Converts a BAM file to a bgzipped TSV file. The output reports per-position statistics: base count distribution (if `--type nt_count`) or base quality distribution (if `--type nt_qual`).
+
+### `tsv_to_plot`
+Generates plots from TSV files for a given genomic region:
+
++ `--type nt_qual`: uses TSVs from `nanoloop bam_to_tsv --type nt_qual` and generates plot depicting base quality distribution
++ `--type nt_count`: uses TSVs from `nanoloop bam_to_tsv --type nt_count` and generates plot depicting base count distribution
+
+Note that when `--type nt_count`, the TSV input must be from `bam_to_tsv` with `--type nt_count`; and when `--type nt_qual`, the TSV input must be from `bam_to_tsv` with `--type nt_qual`.
+
+### `tsv_to_bed`
+Simulates a MACS3-compatible BED file:
+
++ `--type nt_qual`: uses TSVs from `nanoloop bam_to_tsv --type nt_qual`, lower average quality yields more tags
++ `--type nt_count`: uses TSVs from `nanoloop bam_to_tsv --type nt_count`, more tags where C-to-T conversion is higher
+
+Note that when `--type nt_count`, the TSV input must be from `bam_to_tsv` with `--type nt_count`; and when `--type nt_qual`, the TSV input must be from `bam_to_tsv` with `--type nt_qual`.
+
+### `tsv_to_peak`
+Calls R-loop peaks using a rolling average approach. 
+
++ Supports both `--type nt_qual` and `--type nt_count`
+
+Note that when `--type nt_count`, the TSV input must be from `bam_to_tsv` with `--type nt_count`; and when `--type nt_qual`, the TSV input must be from `bam_to_tsv` with `--type nt_qual`.
+
+### `bam_to_json`
+Parses a BAM file and outputs a JSON file containing per-read information, including read_id, ref_chr, ref_start, ref_end, ref_seq, and detailed mutation data (type, position, and base quality, etc.).
+
+### `filter_json`
+Filters a JSON file based on either the raw mutation count or the fraction of mutated bases per read.
+
+### `json_to_hotspot`
+Scans each read in the JSON file to detect mutation hotspots using a sliding window approach. Use the `--mutation_type` flag to specify which mutation types to consider.
+
+### `stat_hotspot`
+Generates quality control (QC) plots at the hotspot level, including:
+
++ Hotspot length distribution
+
++ Number of hotspots per read
+
++ Number of distinct mutation types per hotspot
+
+### `cluster_hotspot`
+Creates two types of clustered heatmaps for QC:
+
++ Mutation counts per hotspot (clustered by hotspot)
+
++ Hotspot regions per read (clustered by read)
+
 ## Examples
-The following examples use a downsampled BAM `examples/bam/p1214_no_pcr.bam`, derived from an A3A-treated plasmid sample expected to contain R-loops around its middle region. "no_pcr" indicates sequencing was performed directly after A3A treatment (without PCR), preserving dU signatures.
+
+### Without PCR (reference-centric)
+
+The following examples use a downsampled BAM `examples/bam/p1214_no_pcr.bam`, derived from an A3A-treated plasmid. This sample is expected to contain R-loops around its middle region. The filename suffix "no_pcr" indicates that sequencing was performed directly after A3A treatment (without PCR), preserving dU signatures.
 
 `nanoloop` supports both `--type nt_qual` and `--type nt_count` options. Their usage is demosntrated below.
 
   + `--type nt_qual`: uses the average read quality score at each nucleotide position for peak calling. Regions exhibiting decreased quality scores are identified as potential R-loop candidates.
   + `--type nt_count`: uses the C-to-T conversion frequency at each position for peak calling. Regions with elevated conversion rates are identified as potential R-loop candidates.
 
-### Using base quality: `--type nt_qual`
+#### Using base quality: `--type nt_qual`
 This approach leverages the decreased basecalling quality observed at R-loop regions, an artifact caused by the presence of the unconventional deoxyuridien (dU) base.
 
-#### Step 1: generate TSV
+##### Step 1: generate TSV
 ```bash
 nanoloop bam_to_tsv \
   --bam examples/bam/p1214_no_pcr.bam \
@@ -121,7 +181,7 @@ p1214   7       8       A       49      387     702     492     94      25.59570
 p1214   8       9       A       43      389     583     546     197     27.357792946530147
 ```
 
-#### Step 2: visualize quality distribution
+##### Step 2: visualize quality distribution
 ```bash
 nanoloop tsv_to_plot \
   --tsv examples/res/p1214_no_pcr_nt_qual.tsv.gz \
@@ -135,7 +195,7 @@ Plot shows a base quality drop near 5000–6200, suggesting an R-loop
 
 ![Quality Distribution Plot](examples/res/p1214_no_pcr_nt_qual.jpg)
 
-#### Step 3: call peaks
+##### Step 3: call peaks
 Use `nanoloop tsv_to_peak` to call peaks (potential R-loops) using a rolling average approach:
 ```bash
 nanoloop tsv_to_peak \
@@ -154,7 +214,7 @@ p1214	5469	5830
 p1214	6018	6035
 ```
 
-Alternatively, we can convert the TSV file into a MACS3-compatible BED file for peak calling. In this approach:
+Alternatively, you can convert the TSV file into a MACS3-compatible BED file for peak calling. In this approach:
 ```bash
 # Convert TSV to BED
 nanoloop tsv_to_bed \
@@ -185,10 +245,10 @@ cat examples/res/p1214_no_pcr_nt_qual_macs3_peaks/p1214_no_pcr_nt_qual_macs3_pea
 p1214	4722	6364	p1214_no_pcr_nt_qual_macs3_peak_1	2414	.	1.57326	245.385	241.431	1044
 ```
 
-### Using base count: `--type nt_count`:
+#### Using base count: `--type nt_count`
 This approach focuses on the frequency of C-to-T conversions, another signature of R-loops in A3A-treated samples.
 
-#### Step 1: generate TSV
+##### Step 1: generate TSV
 ```bash
 nanoloop bam_to_tsv \
   --bam examples/bam/p1214_no_pcr.bam \
@@ -211,7 +271,7 @@ p1214   7       8       A       1722    0       1       1       0
 p1214   8       9       A       1754    0       0       4       0
 ```
 
-#### Step 2: visualize conversion frequencies
+##### Step 2: visualize conversion frequencies
 ```bash
 nanoloop tsv_to_plot \
   --tsv examples/res/p1214_no_pcr_nt_count.tsv.gz \
@@ -225,7 +285,7 @@ The plot shows elevated C-to-T conversion frequencies around 5000-6200, indicati
 
 ![Count Distribution Plot](examples/res/p1214_no_pcr_nt_count.jpg)
 
-#### Step 3: call peaks
+##### Step 3: call peaks
 Use the rolling average approach to identify regions with significant C-to-T conversion:
 ```bash
 nanoloop tsv_to_peak \
@@ -245,7 +305,7 @@ p1214   5469    5830
 p1214   6018    6035
 ```
 
-Alternatively, we can use MACS3 for peak calling:
+Alternatively, you can use MACS3 for peak calling:
 ```bash
 # Convert TSV to BED
 nanoloop tsv_to_bed \
@@ -276,11 +336,13 @@ Below is an IGV snapshot comparing peaks called with different approaches:
 
 ![IGV snapshot](examples/res/IGV_snapshot.jpg)
 
-### Use read-centric approach
-In addition to using the referenc-centric method above, we can also use the read-centric approach to identify R-loop regions. The idea is to locate the "mutation hotspots" in each read, extract them as a BED file, and then call peaks using MACS3.
+### With PCR (read-centric)
+The following example uses a downsampled BAM `examples/bam/p1214_with_pcr.bam`, derived from an A3A-treated plasmid sample. This sample is expected to contain R-loops around its middle region. the filename suffix "with_pcr" indicates sequencing was performed after A3A treatment and PCR ammplification, which converts dU to T and introduces other characteristic mutational signatures. 
+
+This is a read-centric approach where `nanoloop` scans each individual read using a sliding windown method. Regions with significantly elevated mutation density (referred to as "hotspots") are identified within each read. The corresponding reference-mapped coordinates of these hotspots are then exported as a BED file, which can be used for peak calling with MACS3.
 
 #### Step 1: generate JSON
-We first need to parse BAM file with `nanoloop bam_to_json` and output a JSON file containing per read information including read id, reference name, reference start, reference end, reference sequence, mutational information such as the location, type, and base quality of each mutation in every read. This JSON file can be further filtered to remove reads that are not of interest, e.g. reads with too few mutations (indicating no R-loop signal).
+First, parse BAM file with `nanoloop bam_to_json` into a JSON file containing information such as read_id, ref_chr, ref_start, ref_end, ref_seq, mutation info (location, type, and base quality of each mutation) on a per-read basis.
 
 ```bash
 nanoloop bam_to_json \
@@ -290,7 +352,9 @@ nanoloop bam_to_json \
 ```
 
 #### Step 2: filter JSON 
-We can use `nanoloop filter_json` to filter out reads with too few mutations. Both `--by count` and `--by frac` options can be used to define the minimum number of mutations or the minimum fraction of mutations in a read, respectively. Mutations with low base quality are possibly false positive mutations and are filtered out using `--base_quality_cutoff`. 
+The resulting JSON file can be further filtered to exclude reads that are unlikely to contain meaningful R-loop signals. For example, reads with too few mutations. This can be done using the `nanoloop filter_json` command.
+
+You can use the `--by count` or `--by frac` options to specify filtering criteria based on the minimum number or fraction of mutations per read, respectively. Additionally, potential false-positive mutations with low basecalling quality can be removed using the `--base_quality_cutoff` option.
 
 ```bash
 nanoloop filter_json \
@@ -304,8 +368,15 @@ nanoloop filter_json \
 6464 out of 9775 reads passed the filter. They will be used to extract mutation hotspots.
 
 #### Step 3: extract mutation hotspots
-We can use `nanoloop json_to_hotspot` to extract mutation hotspots from the filtered JSON file. The idea is to use a sliding window approach to identify regions with significant mutation density in each read. The output is a BED-like file containing the mutation hotspots in each read, that can be passed to MACS3 for peak calling. Use `--mutation_type` to define the mutation type to consider when calculating the mutation fraction per window, e.g. "all" means all mutations will be used, while "CtoT" means only CtoT mutations will be considered, and "CtoT|CtoG" means both CtoT and CtoG mutations will be considered, etc. Use `--mutation_frac_cutoff` to define the minimum mutation fraction in a window to be considered as a mutation hotspot. Use `--window_size` to define the window size for calculating the mutation fraction per window. By default, "hotspot windows" that are within `--window_size` distance will be merged. Below is an example identifying CtoT mutation hotspots in each read.
+You can use `nanoloop json_to_hotspot` to identify mutation hotspots from the filtered JSON file using a sliding window approach. The output is a BED-like file containing the mutation hotspots in each read, that can be passed to MACS3 for peak calling. 
 
+Use `--mutation_type` to specify the types of mutations to consider when calculating the mutation fraction per window. For example:
+
++ `"all"` includes all mutation types
++ `"CtoT"` includes only C-to-T mutations
++ `"CtoT|CtoG"` includes both C-to-T and C-to-G mutations
+
+Use `--mutation_frac_cutoff` to set the minimum mutation fraction required for a window to be classified as a hotspot. Use `--window_size` to define the size of the sliding window used for hotspot detection. By default, adjacent hotspot windows within `--window_size` distance are merged
 ```bash
 nanoloop json_to_hotspot \
   --json examples/res/p1214_with_pcr_filtered.ndjson.gz \
@@ -314,7 +385,6 @@ nanoloop json_to_hotspot \
 ```
 
 Below is an example of the output BED file. Note that the first three columns represent the reference coordinates of the hotspot in each read, and the fourth column is the read id.
-
 ```bash
 zcat < examples/res/p1214_with_pcr_filtered_hotspot.bed.gz | head
 ```
@@ -331,11 +401,8 @@ p1214   5420    5460    ff9eb453-6578-4320-85cf-e5b64a5e2002
 p1214   5326    5366    474d6edd-40c3-49d3-b52c-b99a2d62a55a
 ```
 
+#### Step 4: peak calling with MACS3
 A total of 3362 CtoT mutation hotspots were detected in the 6464 reads passed the filter. The BED file can be passed to MACS3 for peak calling.
-
-
-locate the "mutation hotspots" in each read, extract them as a BED file, and then call peaks using MACS3.
-
 ```bash
 macs3 callpeak -f BED \
   -t examples/res/p1214_with_pcr_filtered_hotspot.bed.gz \
@@ -354,3 +421,53 @@ cat examples/res/p1214_with_pcr_filtered_hotspot_macs3_peaks/p1214_with_pcr_filt
 ```
 p1214   4862    5942    p1214_with_pcr_filtered_hotspot_macs3_peak_1    8661    .       14.6149 869.938 866.131 458
 ```
+
+#### Step 5: QC plots
+You can generate various quality control (QC) plots using the `nanoloop stat_hotspot` and `nanoloop cluster_hotspot` functions. These require additional information to be included in the hotspot BED file, which can be generated with the following command (note the use of `--mutation_type all`):
+```bash
+nanoloop json_to_hotspot \
+  --json examples/res/p1214_with_pcr_filtered.ndjson.gz \
+  --output examples/res/p1214_with_pcr_filtered_hotspot_detailed.bed.gz \
+  --mutation_type all \
+  --ncpus 2 \
+  --include_read_id \
+  --include_mutation_details \
+  --include_ref_seq
+```
+
+Then, use `nanoloop stat_hotspot` to produce a series of QC plots related to the detected mutation hotspots:
+```bash
+nanoloop stat_hotspot \
+  --hotspot examples/res/p1214_with_pcr_filtered_hotspot_detailed.bed.gz \
+  --output examples/res/stat_p1214_with_pcr_filtered_hotspot
+```
+
+This command generates three plots:
++ Hotspot length distribution ![hotspot length distribution](examples/res/stat_p1214_with_pcr_filtered_hotspot/hotspot_length_distribution.svg)
+
++ Hotspot number per read ![Hotspot number per read](examples/res/stat_p1214_with_pcr_filtered_hotspot/hotspot_number_per_read.svg)
+
++ Distinct mutation types per hotspot ![Distinct mutation types per hotspot](examples/res/stat_p1214_with_pcr_filtered_hotspot/distinct_mutation_type_per_hotspot.svg)
+
+To generate additional QC plots, use `nanoloop cluster_hotspot`:
+```bash
+nanoloop cluster_hotspot \
+  --hotspot examples/res/p1214_with_pcr_filtered_hotspot_detailed.bed.gz \
+  --range p1214:5000-6000 \
+  --output examples/res/cluster_p1214_with_pcr_filtered_hotspot
+```
+
+This generates two types of heatmaps: 
++ Mutation counts per hotspot (clustered by hotspot)
+
+  + Mutation counts in each hotspot 
+  ![Mutation counts in each hotspot](examples/res/cluster_p1214_with_pcr_filtered_hotspot/heatmap_per_hotspot_global_count.svg)
+
+  + Mutation fraction (mutation counts divided by hotspot length) in each hotspot 
+  ![Mutation fraction](examples/res/cluster_p1214_with_pcr_filtered_hotspot/heatmap_per_hotspot_global_fraction.svg)
+
++ Hotspot regions per read (clustered by read)
+![Hotspot regions per read](examples/res/cluster_p1214_with_pcr_filtered_hotspot/heatmap_per_read_p1214_5000_6000.svg)
+
+## Bug reports
+If you encounter a bug or wish to request a new feature, please open a [new issue](https://github.com/hukai916/nanoloop/issues/new) on the GitHub repository.

@@ -2,13 +2,9 @@
 
 import json
 import gzip
-import multiprocessing
 from multiprocessing import Process, Queue
 import os
-import tempfile
-from itertools import islice
 from .utils import process_filter_json, chunk_json_file
-
 
 def writer_process(queue, output_path):
   """Dedicated process to write filtered results to gzipped NDJSON file"""
