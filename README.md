@@ -18,7 +18,7 @@
     - [Using base quality](#using-base-quality---type-nt_qual)
     - [Using base count](#using-base-count---type-nt_count)
   - [With PCR](#with-pcr-read-centric)
-- [Bug report](#bug-report)
+- [Bug reports](#bug-reports)
 
 ## Introduction
 The `nanoloop` library enables the identification of R-loop regions using nanopore sequencing data.
