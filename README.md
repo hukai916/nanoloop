@@ -63,6 +63,9 @@ Both the reference-centric and read-centric workflows include built-in plotting 
 ## Installation
 ```
 pip install nanoloop
+
+# Update to the latest version
+pip install --upgrade nanoloop
 ```
 
 ## Parameters
@@ -481,4 +484,10 @@ If you encounter a bug or wish to request a new feature, please open a [new issu
 - Minor bug fix for `tsv_to_plot` indexing issue
 - Minor bug fix for `bam_to_tsv` supplementary alignment handling
 - Support `--show_qual_bin` option for `tsv_to_plot` to suppress displaying quality bins if needed
+</details>
+
+<details>
+  <summary>v0.3.2 (2025-07-31)</summary>
+
+- Refactor codes to improve arg parsing performance
 </details>

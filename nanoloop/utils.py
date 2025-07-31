@@ -8,7 +8,6 @@ from collections import Counter
 import gzip
 from .constants import ref_mutations
 import json
-import time
 
 def validate_range(user_range):
     range_pattern = r"^(\w+):(\d+)-(\d+)$"

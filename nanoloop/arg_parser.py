@@ -1,6 +1,4 @@
 import argparse
-from .utils import validate_range
-from .constants import ref_mutations
 
 def str2bool(v):
   if isinstance(v, bool):
@@ -309,6 +307,7 @@ def create_args():
   if args.command == 'tsv_to_plot':
     if not args.tsv.endswith('.tsv.gz'):
       parser.error('The --tsv path must end with .tsv.gz and must be created with bgzip!')
+    from .utils import validate_range
     validate_range(args.range)
     if args.type == 'nt_qual':
       if args.add_gc and args.add_qual_avg:
@@ -349,6 +348,7 @@ def create_args():
     if not args.output.endswith('.bed.gz'):
       parser.error('The --output path must end with .bed.gz!')
     if not args.mutation_type == 'all':
+      from .constants import ref_mutations
       for mutation_type in args.mutation_type.split('|'):
         if mutation_type not in ref_mutations:
           parser.error(f'Invalid "mutation_type": {mutation_type}')
@@ -360,6 +360,7 @@ def create_args():
   if args.command == 'cluster_hotspot':
     if not args.hotspot.endswith('.bed.gz'):
       parser.error('The --hotspot path must end with .bed.gz!')
+    from .utils import validate_range
     validate_range(args.range)
 
   return args
