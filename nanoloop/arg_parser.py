@@ -72,6 +72,12 @@ def create_args():
                                   choices = ['ratio', 'count'],
                                   default = 'ratio', 
                                   help = 'Plot mode: "ratio" or "count", the former is for C_to_T fraction and the latter is for raw count at each site')
+  parser_tsv_to_plot.add_argument('--show_qual_bin', 
+                                  type = str2bool, 
+                                  const = True,
+                                  nargs = '?',
+                                  default = True,
+                                  help = 'Relevant when --type is "nt_qual", show stacked bars representing quality bins in plot, default to True. If False, --add_qual_avg must be True')
   parser_tsv_to_plot.add_argument('--add_gc', 
                                   type = str2bool, 
                                   const = True,
@@ -315,7 +321,14 @@ def create_args():
       parser.error('The --tsv path must end with .tsv.gz and must be created with bgzip!')
     if not args.output.endswith('.bed.gz'):
       parser.error('The --output path must end with .bed.gz!')
-  
+
+  if args.command == 'tsv_to_plot':
+    if not args.show_qual_bin:
+      if not args.add_qual_avg:
+        parser.error('When --show_qual_bin is True, --add_qual_avg must be True!')
+      if args.add_gc:
+        parser.error('When --show_qual_bin is True, --add_gc must be False!')
+
   if args.command == 'tsv_to_peak':
     if not args.output.endswith('.bed.gz'):
       parser.error('The --output path must end with .bed.gz!')

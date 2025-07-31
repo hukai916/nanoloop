@@ -19,6 +19,7 @@
     - [Using base count](#using-base-count---type-nt_count)
   - [With PCR](#with-pcr-read-centric)
 - [Bug reports](#bug-reports)
+- [Release notes](#release-notes)
 
 ## Introduction
 The `nanoloop` library enables the identification of R-loop regions using nanopore sequencing data.
@@ -57,7 +58,7 @@ In addition to the reference-centric strategy, `nanoloop` implements a read-cent
 
 The strategy operates as follows: ![With PCR](docs/images/with_pcr.svg)
 
-Both the reference-centric and read-centric workflows include built-in plotting functions for quality control. For detailed usage, see the Examples section.
+Both the reference-centric and read-centric workflows include built-in plotting functions for quality control. For detailed usage, see the [Examples](#with_pcr) section.
 
 ## Installation
 ```
@@ -471,3 +472,13 @@ This generates two types of heatmaps:
 
 ## Bug reports
 If you encounter a bug or wish to request a new feature, please open a [new issue](https://github.com/hukai916/nanoloop/issues/new) on the GitHub repository.
+
+## Release notes
+
+<details>
+  <summary>v0.3.1 (2025-07-31)</summary>
+
+- Minor bug fix for `tsv_to_plot` indexing issue
+- Minor bug fix for `bam_to_tsv` supplementary alignment handling
+- Support `--show_qual_bin` option for `tsv_to_plot` to suppress displaying quality bins if needed
+</details>

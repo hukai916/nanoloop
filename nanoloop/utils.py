@@ -8,6 +8,7 @@ from collections import Counter
 import gzip
 from .constants import ref_mutations
 import json
+import time
 
 def validate_range(user_range):
     range_pattern = r"^(\w+):(\d+)-(\d+)$"
@@ -34,12 +35,13 @@ def ensure_tsv_index(tsv_file):
         
 def parse_filename(path):
     filename = os.path.basename(path)
-    match = re.match(r"([a-zA-Z0-9]+)_([\d]+)_([\d]+)", filename)
+    match = re.match(r"(.+?)_(\d+)_(\d+)", filename)
     if match:
-        chr = match.group(1)
+        chrom = match.group(1)
         start = int(match.group(2))
-        return chr, start
+        return chrom, start
     return None, None
+
 
 def chunk_bam(ref_name, ref_length, num_chunks):
   chunk_size = (ref_length + num_chunks - 1) // num_chunks 
@@ -57,7 +59,6 @@ def extract_range_from_tsv(file_path, region):
       header = [f'col{i + 1}' for i in range(n_col)]
 
   with pysam.TabixFile(file_path) as tabix_file:
-    print(file_path)
     lines = list(tabix_file.fetch(region = region))
     if not lines:
       raise ValueError('Warnning: no data found in the specified region.')
@@ -78,6 +79,7 @@ def process_bam_chunk_nt_qual(ref_name, start_pos, end_pos, bam_path, ref_path, 
   
     for pileup_column in bam.pileup(ref_name, start_pos, end_pos, min_base_quality = 0, max_depth = 2_147_483_647):
       pos = pileup_column.pos
+      
       if pos < start_pos or pos >= end_pos:
         continue 
       
@@ -86,6 +88,9 @@ def process_bam_chunk_nt_qual(ref_name, start_pos, end_pos, bam_path, ref_path, 
       
       quals = []
       for pileup_read in pileup_column.pileups:
+        # Reads with flag 256 or 2048 are secondary or supplementary, skip them since they may not contain quality scores
+        if pileup_read.alignment.is_secondary or pileup_read.alignment.is_supplementary:
+          continue
         read_pos = pileup_read.query_position
         read_qual = pileup_read.alignment.query_qualities[read_pos] if read_pos is not None else 0 
         quals.append(read_qual)

@@ -94,20 +94,31 @@ def run_tsv_to_plot(args):
       y_cols = ['qual_0_10', 'qual_10_20', 'qual_20_30', 'qual_30_40', 'qual_40_above']
     
     _, ax = plt.subplots()
-    plot_kwargs = dict(edgecolor = 'black', linewidth = 0.5, s = 12, alpha = 0.75)
-    n_bins = 5
-    cmap = plt.cm.get_cmap('summer')
-    colors = [cmap(i) for i in np.linspace(0, 1, n_bins)][::-1]
-    labels = ['0-10', '10-20', '20-30', '30-40', '40+']
-    
-    bottom = np.zeros(len(df))
-    for y_col, color, label in zip(y_cols, colors, labels):
-      ax.bar(df['start'], df[y_col], bottom = bottom, color = color, label = label, width = 1.0)
-      bottom += df[y_col].values
 
-    ax.set_xlabel('Position')
-    ax.set_ylabel(y_label)
-    ax.legend(title='Quality Bin')
+    # Below is the basic stacked bar plot for quality distribution
+    if args.show_qual_bin:
+      n_bins = 5
+      cmap = plt.cm.get_cmap('summer')
+      colors = [cmap(i) for i in np.linspace(0, 1, n_bins)][::-1]
+      labels = ['0-10', '10-20', '20-30', '30-40', '40+']
+      bottom = np.zeros(len(df))
+      for y_col, color, label in zip(y_cols, colors, labels):
+        ax.bar(df['start'], df[y_col], bottom = bottom, color = color, label = label, width = 1.0)
+        bottom += df[y_col].values
+        ax.set_xlabel('Position')
+        ax.set_ylabel(y_label)
+        ax.legend(title='Quality Bin')
+    else:
+      window_size = 25
+      ax2 = ax.twinx()
+      df['qual_avg_rolling_avg'] = df['qual_avg'].rolling(window = 25, min_periods = 1).mean()
+      sns.lineplot(data = df, ax = ax2, x = 'start', y = 'qual_avg_rolling_avg', color = '#000000', linewidth = 0.3, alpha = 0.45)
+      ax2.set_ylabel('Qual Avg (rolling avg)')
+      ax.set_xlabel('Position')
+      ax.set_ylabel(y_label)
+      # stop and return
+      plt.savefig(args.output)
+      return
     
     if (args.add_gc):
       window_size = 25
@@ -127,3 +138,4 @@ def run_tsv_to_plot(args):
       ax2.set_ylabel('Qual Avg (rolling avg)')
     
     plt.savefig(args.output)
+    return
