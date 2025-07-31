@@ -195,9 +195,22 @@ nanoloop tsv_to_plot \
   --output examples/res/p1214_no_pcr_nt_qual.jpg
 ```
 
-Plot shows a base quality drop near 5000–6200, suggesting an R-loop
+Plot shows a base quality drop near 5000–6200, suggesting an R-loop:
 
 ![Quality Distribution Plot](examples/res/p1214_no_pcr_nt_qual.jpg)
+
+To suppress displaying quality bins in the plot, use `--show_qual_bin false`:
+```bash
+nanoloop tsv_to_plot \
+  --tsv examples/res/p1214_no_pcr_nt_qual.tsv.gz \
+  --type nt_qual \
+  --range p1214:0-10000 \
+  --add_qual_avg true \
+  --show_qual_bin false \
+  --output examples/res/p1214_no_pcr_nt_qual_no_qual_bin.jpg
+```
+
+![Quality Distribution Plot](examples/res/p1214_no_pcr_nt_qual_no_qual_bin.jpg)
 
 ##### Step 3: call peaks
 Use `nanoloop tsv_to_peak` to call peaks (potential R-loops) using a rolling average approach:
